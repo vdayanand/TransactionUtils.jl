@@ -6,6 +6,12 @@ using JSON
 
 abstract type Resource  end
 
+function pprint_exception(e)
+    eio = IOBuffer()
+    Base.showerror(eio, e, catch_backtrace())
+    @error String(take!(eio))
+end
+
 @enum FileType begin
     JSONFile
     TOMLFile
@@ -41,8 +47,10 @@ function Transaction(proc::Function, name::String)
     try
         @info "Running Transaction ..." name
         proc(u)
+        @info "Completed Transaction ..." name
     catch ex
         @info "Transaction failed" name ex
+        #pprint_exception(ex)
         rollback(u)
     end
 end
@@ -52,7 +60,7 @@ function resource_hash(resource::File)
 end
 
 function configdir(u::Transaction)
-    root = get(ENV, "UPGRADER_CONFIG_DIR", joinpath(homedir(), ".upgrader"))
+    root = get(ENV, "TRANSACTION_CONFIG_DIR", joinpath(homedir(), ".transaction"))
     joinpath(root, string(u.name, "-", u.id))
 end
 
@@ -65,7 +73,7 @@ function add!(u::Transaction, key::String, hashconfig::Dict)
         error("Duplicate operation on same resource not permitted")
     end
     u.config["backups"][key] = hashconfig
-    upgrade_file = joinpath(configdir(u), "upgrade.json")
+    upgrade_file = joinpath(configdir(u), "transaction.json")
     open(upgrade_file*".tmp", "w") do f
         JSON.print(f, u.config)
     end
@@ -74,7 +82,7 @@ end
 
 function remove!(u::Transaction, key::String)
     delete!(u.config["backups"], key)
-    upgrade_file = joinpath(configdir(u), "upgrade.json")
+    upgrade_file = joinpath(configdir(u), "transaction.json")
     open(upgrade_file*".tmp", "w") do f
         JSON.print(f, u.config)
     end
@@ -89,7 +97,7 @@ function backup!(u::Transaction, resource::File)
     end
     if !isnothing(hash)
         backfile = joinpath(resourcedir(u), hash)
-        mv(resource.path, backfile, force = true)
+        atomic_copy(resource.path, backfile, force = true)
         add!(u, resource.path, Dict("type"=> "file", "hash" => hash))
     else
         add!(u, resource.path, Dict("type"=> "file"))
@@ -165,7 +173,7 @@ function patch(callback::Function, u::Transaction, src::String, src_type::Val{TO
     mv(src*".tmp", src, force = true)
 end
 
-function patch(f::Function, u::Transaction, src::String, src_type::Val{JSONFile})
+function patch(callback::Function, u::Transaction, src::String, src_type::Val{JSONFile})
     backup!(u, File(src))
     res = JSON.parsefile(src)
     new_res = callback(res)

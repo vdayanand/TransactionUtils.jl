@@ -1,6 +1,7 @@
 module TransactionUtilsTests
 using ReTest
-using TransactionUtils: Transaction, copy, remove
+using TransactionUtils: Transaction, copy, remove, JSONFile, patch
+using JSON
 
 @testset "Copy test" begin
     mktempdir() do src
@@ -56,6 +57,37 @@ end
                 remove(u, destfile)
             end
             @test isfile(destfile)
+        end
+    end
+end
+
+@testset "patch test" begin
+    mktempdir() do src
+        mktempdir() do dest
+            destfile = joinpath(dest, "ds")
+            open(destfile, "w") do f
+                JSON.print(f, Dict("test" => "hello"))
+            end
+            @info JSON.parsefile(destfile)
+            Transaction("patch json successfull") do u
+                patch(u, destfile, Val{JSONFile}()) do res
+                    res["test"] = "hellow2"
+                    res
+                end
+            end
+            @test JSON.parsefile(destfile)["test"] == "hellow2"
+            Transaction("patch json failed") do u
+                patch(u, destfile, Val{JSONFile}()) do res
+                    res["test"] = "hellow2"
+                    res
+                end
+                ## fails
+                patch(u, destfile, Val{JSONFile}()) do res
+                    res["test"] = "hellow3"
+                    res
+                end
+            end
+            @test JSON.parsefile(destfile)["test"] == "hellow2"
         end
     end
 end

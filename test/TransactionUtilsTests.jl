@@ -1,8 +1,8 @@
 module TransactionUtilsTests
 using ReTest
-using TransactionUtils: Transaction, copy, remove, JSONFile, patch
+using TransactionUtils: Transaction, copy, remove, JSONFile, patch, TOMLFile, convert
 using JSON
-
+using TOML
 @testset "Copy test" begin
     mktempdir() do src
         mktempdir() do dest
@@ -78,7 +78,7 @@ end
             @test JSON.parsefile(destfile)["test"] == "hellow2"
             Transaction("patch json failed") do u
                 patch(u, destfile, Val{JSONFile}()) do res
-                    res["test"] = "hellow2"
+                    res["test"] = "hellow3"
                     res
                 end
                 ## fails
@@ -88,6 +88,30 @@ end
                 end
             end
             @test JSON.parsefile(destfile)["test"] == "hellow2"
+        end
+    end
+end
+
+@testset "convert test" begin
+    mktempdir() do src
+        mktempdir() do dest
+            destfile = joinpath(dest, "ds")
+            open(destfile, "w") do f
+                JSON.print(f, Dict("test" => "hello"))
+            end
+            Transaction("patch json successfull") do u
+                convert(u, destfile, Val{JSONFile}(), Val{TOMLFile}())
+            end
+            @test TOML.parsefile(destfile)["test"] == "hello"
+            rm(destfile, force = true)
+            open(destfile, "w") do f
+                JSON.print(f, Dict("test" => "hello"))
+            end
+            Transaction("patch json failed") do u
+                convert(u, destfile, Val{JSONFile}(), Val{TOMLFile}())
+                convert(u, destfile, Val{JSONFile}(), Val{TOMLFile}())
+            end
+            @test JSON.parsefile(destfile)["test"] == "hello"
         end
     end
 end

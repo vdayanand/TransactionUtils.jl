@@ -3,6 +3,7 @@ module TransactionUtils
 using Random
 using SHA
 using JSON
+using TOML
 
 abstract type Resource  end
 
@@ -49,7 +50,7 @@ function Transaction(proc::Function, name::String)
         proc(u)
         @info "Completed Transaction ..." name
     catch ex
-        @info "Transaction failed" name ex
+        @info "Failed ..." name ex
         #pprint_exception(ex)
         rollback(u)
     end
@@ -126,15 +127,6 @@ function rollback(u::Transaction)
     end
 end
 
-function run(u::Transaction, auto_rollback = true)
-    try
-        u.proc(u)
-    catch ex
-        @warn "upgrade" failed
-        auto_rollback && rollback(u)
-    end
-end
-
 function copy(u::Transaction, src::String, dest::String)
     backup!(u, File(dest))
     atomic_copy(src, dest, force = true)
@@ -145,22 +137,22 @@ function remove(u::Transaction, dest::String)
     rm(dest, force = true, recursive = true)
 end
 
-function convert(u::Transaction, src::String, dest::String, src_type::Val{JSONFile}, dest_type::Val{TOMLFile})
+function convert(u::Transaction, dest::String, src_type::Val{JSONFile}, dest_type::Val{TOMLFile})
     backup!(u, File(dest))
-    res = JSON.parsefile(src)
-    open(src*".tmp", "w") do f
+    res = JSON.parsefile(dest)
+    open(dest*".tmp", "w") do f
         TOML.print(f, res)
     end
-    mv(src*".tmp", dest, force = true)
+    mv(dest*".tmp", dest, force = true)
 end
 
-function convert(u::Transaction, src::String, dest::String, src_type::Val{TOMLFile}, dest_type::Val{JSONFile})
+function convert(u::Transaction,  dest::String, src_type::Val{TOMLFile}, dest_type::Val{JSONFile})
     backup!(u, File(dest))
-    res = TOML.parsefile(src)
-    open(src*".tmp", "w") do f
+    res = TOML.parsefile(dest)
+    open(dest*".tmp", "w") do f
         JSON.print(f, res)
     end
-    mv(src*".tmp", dest, force = true)
+    mv(dest*".tmp", dest, force = true)
 end
 
 function patch(callback::Function, u::Transaction, src::String, src_type::Val{TOMLFile})

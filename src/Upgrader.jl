@@ -107,7 +107,7 @@ function rollback(u::Transaction, _::Type{File}, key::String, config::Dict)
             error("Resource missing unable rollback")
         end
     else
-        rm(key, force = true)
+        rm(key, force = true, recursive=true)
     end
     remove!(u, key)
 end

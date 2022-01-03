@@ -6,6 +6,7 @@ using JSON
 using TOML
 
 abstract type Resource  end
+export Transaction, copy, remove, convert, patch, JSONFile, TOMLFile
 
 function pprint_exception(e)
     eio = IOBuffer()
@@ -37,6 +38,14 @@ function atomic_copy(src::String, dest::String; force = false)
     path = mktempdir()
     cp(src, path, force = true)
     mv(path, dest; force = force)
+end
+
+function Transaction(id::String)
+    arr = string.(split(id, "-"))
+    name == arr[1]
+    id == arr[2]
+    root = get(ENV, "TRANSACTION_CONFIG_DIR", joinpath(homedir(), ".transaction"))
+    Transaction(name, id, x->x, JSON.parsefile(joinpath(root, string(name, "-", id), "transaction.json")))
 end
 
 function Transaction(proc::Function, name::String; auto_rollback = true, verbose = false)
@@ -126,6 +135,7 @@ end
 
 function rollback(u::Transaction)
     for (k, v) in u.config["backups"]
+        @info "Key v" k v
         rollback(u, RESOURCE_TYPE_MAP[v["type"]], k, v)
     end
 end

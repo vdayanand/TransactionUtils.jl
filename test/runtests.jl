@@ -1,3 +1,3 @@
-using Upgrader
-
-@test 1==1
+using ReTest, Upgrader
+include("UpgraderTests.jl")
+retest(Upgrader, UpgraderTests)

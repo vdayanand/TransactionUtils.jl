@@ -132,9 +132,9 @@ function copy(u::Transaction, src::String, dest::String)
     atomic_copy(src, dest, force = true)
 end
 
-function remove(u::Transaction, src::String, dest::String)
+function remove(u::Transaction, dest::String)
     backup!(u, File(dest))
-    rm(src, dest, force = true, recursive = true)
+    rm(dest, force = true, recursive = true)
 end
 
 function convert(u::Transaction, src::String, dest::String, src_type::Val{JSONFile}, dest_type::Val{TOMLFile})

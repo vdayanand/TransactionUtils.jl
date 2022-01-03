@@ -1,6 +1,6 @@
 module TransactionUtilsTests
 using ReTest
-using TransactionUtils: Transaction, copy
+using TransactionUtils: Transaction, copy, remove
 
 @testset "Copy test" begin
     mktempdir() do src
@@ -36,6 +36,26 @@ using TransactionUtils: Transaction, copy
                 copy(u, src_dir, dest_dir)
             end
             @test !isdir(dest_dir)
+        end
+    end
+end
+
+
+@testset "Remove test" begin
+    mktempdir() do src
+        mktempdir() do dest
+            destfile = joinpath(dest, "ds")
+            touch(destfile)
+            Transaction("remove test successfull") do u
+                remove(u, destfile)
+            end
+            @test !isfile(destfile)
+            touch(destfile)
+            Transaction("remove test successfull") do u
+                remove(u, destfile)
+                remove(u, destfile)
+            end
+            @test isfile(destfile)
         end
     end
 end

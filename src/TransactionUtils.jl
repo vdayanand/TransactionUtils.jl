@@ -39,7 +39,7 @@ function atomic_copy(src::String, dest::String; force = false)
     mv(path, dest; force = force)
 end
 
-function Transaction(proc::Function, name::String)
+function Transaction(proc::Function, name::String; auto_rollback = true, verbose = false)
     u = Transaction(replace(name, r"\s"=>"-"), randstring(6), proc, Dict("backups"=>Dict{String, Any}()))
     dir = configdir(u)
     if !isdir(dir)
@@ -50,9 +50,12 @@ function Transaction(proc::Function, name::String)
         proc(u)
         @info "Completed Transaction ..." name
     catch ex
-        @info "Failed ..." name ex
-        #pprint_exception(ex)
-        rollback(u)
+        auto_rollback && rollback(u)
+        if verbose
+            pprint_exception(ex)
+        else
+             @info "Failed ..." name ex
+        end
     end
 end
 

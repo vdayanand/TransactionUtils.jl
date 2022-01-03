@@ -13,7 +13,7 @@ using Upgrader: Transaction, copy
             end
             @test isfile(testfiledest)
             rm(testfiledest, force = true)
-            Transaction("copy test faled") do u
+            Transaction("copy test falied") do u
                 copy(u, testfile, testfiledest)
                 ## failed copy, triggers rollback
                 copy(u, testfile*"DS", testfiledest)

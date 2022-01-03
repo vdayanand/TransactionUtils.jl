@@ -39,9 +39,10 @@ function Transaction(proc::Function, name::String)
         mkpath(joinpath(dir, "resource"))
     end
     try
+        @info "Running Transaction ..." name
         proc(u)
     catch ex
-        @info "failed" ex
+        @info "Transaction failed" name ex
         rollback(u)
     end
 end

@@ -1,6 +1,6 @@
-module UpgraderTests
+module TransactionUtilsTests
 using ReTest
-using Upgrader: Transaction, copy
+using TransactionUtils: Transaction, copy
 
 @testset "Copy test" begin
     mktempdir() do src

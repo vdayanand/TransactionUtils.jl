@@ -1,4 +1,4 @@
-module Upgrader
+module TransactionUtils
 
 using Random
 using SHA

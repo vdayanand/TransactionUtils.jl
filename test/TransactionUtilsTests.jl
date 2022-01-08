@@ -38,6 +38,21 @@ using TOML
                 copy(u, src_dir, dest_dir)
             end
             @test !isdir(dest_dir)
+
+            ## lets try dest non empty
+            mkpath(dest_dir)
+            touch(joinpath(dest_dir, "B"))
+            Transaction("copy directory failed: destination non empty") do u
+                copy(u, src_dir, dest_dir)
+                copy(u, src_dir, dest_dir)
+            end
+            @test isdir(dest_dir)
+            @test isfile(joinpath(dest_dir, "B"))
+            Transaction("copy directory success: destination non empty") do u
+                copy(u, src_dir, dest_dir)
+            end
+            @test isdir(dest_dir)
+            @test isfile(joinpath(dest_dir, "A"))
         end
     end
 end

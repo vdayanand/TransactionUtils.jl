@@ -55,15 +55,15 @@ function Transaction(proc::Function, name::String; auto_rollback = true, verbose
         mkpath(joinpath(dir, "resource"))
     end
     try
-        @info "Running Transaction ..." name
+        @info "Running Transaction ... $(name)"
         proc(u)
-        @info "Completed Transaction ..." name
+        @info "Completed Transaction ... $(name)"
     catch ex
         auto_rollback && rollback(u)
         if verbose
             pprint_exception(ex)
         else
-             @info "Failed ..." name ex
+             @warn "Failed ... $(name) due to $(ex)"
         end
     end
 end
@@ -81,11 +81,13 @@ function resourcedir(u::Transaction)
     joinpath(configdir(u), "resource")
 end
 
+function resource_backed(u::Transaction, key::String)
+    haskey(u.config["backups"], key)
+end
+
 function add!(u::Transaction, key::String, hashconfig::Dict)
-    if haskey(u.config["backups"], key)
-        error("Duplicate operation on same resource not permitted")
-    end
     u.config["backups"][key] = hashconfig
+    @debug "Persisting backup structure for rollback $(key)" hashconfig
     upgrade_file = joinpath(configdir(u), "transaction.json")
     open(upgrade_file*".tmp", "w") do f
         JSON.print(f, u.config)
@@ -103,13 +105,19 @@ function remove!(u::Transaction, key::String)
 end
 
 function backup!(u::Transaction, resource::File)
-    hash = if isfile(resource.path)
+    if resource_backed(u, resource.path)
+        error("Backing up resource $(resource.path) within same transaction not allowed")
+    end
+    @debug "backing up $(resource.path)"
+    hash = if isfile(resource.path) || isdir(resource.path)
         resource_hash(resource)
     else
         nothing
     end
+    @debug "Generated debug hash" hash
     if !isnothing(hash)
         backfile = joinpath(resourcedir(u), hash)
+        @debug "Taking backup of $(resource.path) to $(backfile)"
         atomic_copy(resource.path, backfile, force = true)
         add!(u, resource.path, Dict("type"=> "file", "hash" => hash))
     else
@@ -122,7 +130,7 @@ function rollback(u::Transaction, _::Type{File}, key::String, config::Dict)
     hash = get(config, "hash", nothing)
     if hash != nothing
         backfile = joinpath(resourcedir(u), hash)
-        if isfile(backfile) && resource_hash(File(backfile)) == hash
+        if (isfile(backfile) || isdir(backfile)) && resource_hash(File(backfile)) == hash
             mv(backfile, key, force=true)
         else
             error("Resource missing unable rollback")
@@ -135,7 +143,7 @@ end
 
 function rollback(u::Transaction)
     for (k, v) in u.config["backups"]
-        @info "Key v" k v
+        @info "Key v $(k) $(v)"
         rollback(u, RESOURCE_TYPE_MAP[v["type"]], k, v)
     end
 end

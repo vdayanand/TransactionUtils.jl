@@ -108,6 +108,9 @@ function backup!(u::Transaction, resource::File)
     if resource_backed(u, resource.path)
         error("Backing up resource $(resource.path) within same transaction not allowed")
     end
+    if islink(resource.path)
+        error("Links not supported")
+    end
     @debug "backing up $(resource.path)"
     hash = if isfile(resource.path) || isdir(resource.path)
         resource_hash(resource)

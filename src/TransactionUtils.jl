@@ -152,20 +152,25 @@ function rollback(u::Transaction)
 end
 
 function copy(u::Transaction, src::String, dest::String)
-    backup!(u, File(dest))
-    if !isfile(src) && !isdir(src))
+    if !isfile(src) && !isdir(src)
         error("Resource $(src) not found")
     end
-
+    backup!(u, File(dest))
     atomic_copy(src, dest, force = true)
 end
 
 function remove(u::Transaction, dest::String)
+    if !isfile(dest) && !isdir(dest)
+        error("Resource $(dest) not found")
+    end
     backup!(u, File(dest))
     rm(dest, force = true, recursive = true)
 end
 
 function convert(u::Transaction, dest::String, src_type::Val{JSONFile}, dest_type::Val{TOMLFile})
+    if !isfile(dest) && !isdir(dest)
+        error("Resource $(dest) not found")
+    end
     backup!(u, File(dest))
     res = JSON.parsefile(dest)
     open(dest*".tmp", "w") do f
@@ -175,6 +180,9 @@ function convert(u::Transaction, dest::String, src_type::Val{JSONFile}, dest_typ
 end
 
 function convert(u::Transaction,  dest::String, src_type::Val{TOMLFile}, dest_type::Val{JSONFile})
+    if !isfile(dest) && !isdir(dest)
+        error("Resource $(src) not found")
+    end
     backup!(u, File(dest))
     res = TOML.parsefile(dest)
     open(dest*".tmp", "w") do f
@@ -184,6 +192,9 @@ function convert(u::Transaction,  dest::String, src_type::Val{TOMLFile}, dest_ty
 end
 
 function patch(callback::Function, u::Transaction, src::String, src_type::Val{TOMLFile})
+    if !isfile(src) && !isdir(src)
+        error("Resource $(src) not found")
+    end
     backup!(u, File(src))
     res = TOML.parsefile(src)
     new_res = callback(res)

@@ -153,6 +153,10 @@ end
 
 function copy(u::Transaction, src::String, dest::String)
     backup!(u, File(dest))
+    if !isfile(src) && !isdir(src))
+        error("Resource $(src) not found")
+    end
+
     atomic_copy(src, dest, force = true)
 end
 

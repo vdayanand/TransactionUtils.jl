@@ -205,6 +205,9 @@ function patch(callback::Function, u::Transaction, src::String, src_type::Val{TO
 end
 
 function patch(callback::Function, u::Transaction, src::String, src_type::Val{JSONFile})
+    if !isfile(src) && !isdir(src)
+        error("Resource $(src) not found")
+    end
     backup!(u, File(src))
     res = JSON.parsefile(src)
     new_res = callback(res)

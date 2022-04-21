@@ -42,11 +42,11 @@ end
 
 function Transaction(name::String, id::String)
     root = get(ENV, "TRANSACTION_CONFIG_DIR", joinpath(homedir(), ".transaction"))
-    Transaction(name, id, x->x, JSON.parsefile(configdir(name, id), "transaction.json"))
+    Transaction(name, id, x->x, JSON.parsefile(joinpath(configdir(name, id), "transaction.json")))
 end
 
 function Transaction(proc::Function, name::String; auto_rollback = true, verbose = false)
-    if isnothing(match(r"\s", name))
+    if !isnothing(match(r"\s", name))
         error("Transaction name should not contain space characters")
     end
     u = Transaction(name, randstring(6), proc, Dict("backups"=>Dict{String, Any}()))
@@ -55,17 +55,18 @@ function Transaction(proc::Function, name::String; auto_rollback = true, verbose
         mkpath(joinpath(dir, "resource"))
     end
     try
-        @info "Running Transaction ... $(name)"
+        @info "Running Transaction ... name=$(name) id=$(u.id)"
         proc(u)
-        @info "Completed Transaction ... $(name)"
+        @info "Completed Transaction ... name=$(name) id=$(u.id)"
     catch ex
         auto_rollback && rollback(u)
         if verbose
             pprint_exception(ex)
         else
-             @warn "Failed ... $(name) due to $(ex)"
+             @warn "Failed ... name=$(name) id=$(u.id) due to $(ex)"
         end
     end
+    u
 end
 
 function resource_hash(resource::File)

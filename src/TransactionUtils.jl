@@ -40,16 +40,16 @@ function atomic_copy(src::String, dest::String; force = false)
     mv(path, dest; force = force)
 end
 
-function Transaction(id::String)
-    arr = string.(split(id, "-"))
-    name == arr[1]
-    id == arr[2]
+function Transaction(name::String, id::String)
     root = get(ENV, "TRANSACTION_CONFIG_DIR", joinpath(homedir(), ".transaction"))
-    Transaction(name, id, x->x, JSON.parsefile(joinpath(root, string(name, "-", id), "transaction.json")))
+    Transaction(name, id, x->x, JSON.parsefile(configdir(name, id), "transaction.json"))
 end
 
 function Transaction(proc::Function, name::String; auto_rollback = true, verbose = false)
-    u = Transaction(replace(name, r"\s"=>"-"), randstring(6), proc, Dict("backups"=>Dict{String, Any}()))
+    if isnothing(match(r"\s", name))
+        error("Transaction name should not contain space characters")
+    end
+    u = Transaction(name, randstring(6), proc, Dict("backups"=>Dict{String, Any}()))
     dir = configdir(u)
     if !isdir(dir)
         mkpath(joinpath(dir, "resource"))
@@ -73,8 +73,12 @@ function resource_hash(resource::File)
 end
 
 function configdir(u::Transaction)
+    configdir(u.name, u.id)
+end
+
+function configdir(name::String, id::String)
     root = get(ENV, "TRANSACTION_CONFIG_DIR", joinpath(homedir(), ".transaction"))
-    joinpath(root, string(u.name, "-", u.id))
+    joinpath(root, string(name, "-", id))
 end
 
 function resourcedir(u::Transaction)

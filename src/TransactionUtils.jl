@@ -5,10 +5,10 @@ using SHA
 using JSON
 using TOML
 
-using .EnvFileUtils
+using .DotEnv
 
 abstract type Resource  end
-export Transaction, copy, remove, convert, patch, JSONFile, TOMLFile, EnvFile, EnvFileUtils
+export Transaction, copy, remove, convert, patch, JSONFile, TOMLFile, EnvFile, DotEnv
 
 function pprint_exception(e)
     eio = IOBuffer()
@@ -230,10 +230,10 @@ function patch(callback::Function, u::Transaction, src::String, src_type::Val{En
         error("Resource $(src) not found")
     end
     backup!(u, File(src))
-    res = EnvFileUtils.parse(src)
+    res = DotEnv.parse(src)
     new_res = callback(res)
     open(src*".tmp", "w") do f
-        EnvFileUtils.print(f, new_res)
+        DotEnv.print(f, new_res)
     end
     mv(src*".tmp", src, force = true)
 end

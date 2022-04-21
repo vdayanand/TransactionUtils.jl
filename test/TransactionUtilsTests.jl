@@ -1,6 +1,6 @@
 module TransactionUtilsTests
 using ReTest
-using TransactionUtils: Transaction, copy, remove, JSONFile, patch, TOMLFile, convert, rollback, EnvFile, EnvFileUtils
+using TransactionUtils: Transaction, copy, remove, JSONFile, patch, TOMLFile, convert, rollback, EnvFile, DotEnv
 using JSON
 using TOML
 
@@ -156,7 +156,7 @@ end
         mktempdir() do dest
             destfile = joinpath(dest, "ds")
             open(destfile, "w") do f
-                EnvFileUtils.print(f, Dict("test" => "hello"))
+                DotEnv.print(f, Dict("test" => "hello"))
             end
             t  = Transaction("patch-test-envfile") do u
                 patch(u, destfile, Val{EnvFile}()) do res
@@ -164,9 +164,9 @@ end
                     res
                 end
             end
-            @test EnvFileUtils.parse(destfile)["test"] == "hellow3"
+            @test DotEnv.parse(destfile)["test"] == "hellow3"
             rollback(t)
-            @test EnvFileUtils.parse(destfile)["test"] == "hello"
+            @test DotEnv.parse(destfile)["test"] == "hello"
         end
     end
 end

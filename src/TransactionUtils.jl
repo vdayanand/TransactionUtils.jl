@@ -1,12 +1,14 @@
 module TransactionUtils
-
+include("envfile.jl")
 using Random
 using SHA
 using JSON
 using TOML
 
+using .EnvFileUtils
+
 abstract type Resource  end
-export Transaction, copy, remove, convert, patch, JSONFile, TOMLFile
+export Transaction, copy, remove, convert, patch, JSONFile, TOMLFile, EnvFile, EnvFileUtils
 
 function pprint_exception(e)
     eio = IOBuffer()
@@ -18,6 +20,7 @@ end
     JSONFile
     TOMLFile
     YAMLFile
+    EnvFile
 end
 
 struct File <: Resource
@@ -222,5 +225,17 @@ function patch(callback::Function, u::Transaction, src::String, src_type::Val{JS
     mv(src*".tmp", src, force = true)
 end
 
+function patch(callback::Function, u::Transaction, src::String, src_type::Val{EnvFile})
+    if !isfile(src) && !isdir(src)
+        error("Resource $(src) not found")
+    end
+    backup!(u, File(src))
+    res = EnvFileUtils.parse(src)
+    new_res = callback(res)
+    open(src*".tmp", "w") do f
+        EnvFileUtils.print(f, new_res)
+    end
+    mv(src*".tmp", src, force = true)
+end
 
 end # module

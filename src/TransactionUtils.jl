@@ -1,12 +1,14 @@
 module TransactionUtils
-
+include("envfile.jl")
 using Random
 using SHA
 using JSON
 using TOML
 
+using .DotEnv
+
 abstract type Resource  end
-export Transaction, copy, remove, convert, patch, JSONFile, TOMLFile
+export Transaction, copy, remove, convert, patch, JSONFile, TOMLFile, EnvFile, DotEnv
 
 function pprint_exception(e)
     eio = IOBuffer()
@@ -18,6 +20,7 @@ end
     JSONFile
     TOMLFile
     YAMLFile
+    EnvFile
 end
 
 struct File <: Resource
@@ -40,32 +43,31 @@ function atomic_copy(src::String, dest::String; force = false)
     mv(path, dest; force = force)
 end
 
-function Transaction(id::String)
-    arr = string.(split(id, "-"))
-    name == arr[1]
-    id == arr[2]
+function Transaction(name::String, id::String)
     root = get(ENV, "TRANSACTION_CONFIG_DIR", joinpath(homedir(), ".transaction"))
-    Transaction(name, id, x->x, JSON.parsefile(joinpath(root, string(name, "-", id), "transaction.json")))
+    Transaction(name, id, x->x, JSON.parsefile(joinpath(configdir(name, id), "transaction.json")))
 end
 
 function Transaction(proc::Function, name::String; auto_rollback = true, verbose = false)
-    u = Transaction(replace(name, r"\s"=>"-"), randstring(6), proc, Dict("backups"=>Dict{String, Any}()))
+    name = replace(name, r"\s"=>s"-")
+    u = Transaction(name, randstring(6), proc, Dict("backups"=>Dict{String, Any}()))
     dir = configdir(u)
     if !isdir(dir)
         mkpath(joinpath(dir, "resource"))
     end
     try
-        @info "Running Transaction ... $(name)"
+        @info "Running Transaction ... name=$(name) id=$(u.id)"
         proc(u)
-        @info "Completed Transaction ... $(name)"
+        @info "Completed Transaction ... name=$(name) id=$(u.id)"
     catch ex
         auto_rollback && rollback(u)
         if verbose
             pprint_exception(ex)
         else
-             @warn "Failed ... $(name) due to $(ex)"
+             @warn "Failed ... name=$(name) id=$(u.id) due to $(ex)"
         end
     end
+    u
 end
 
 function resource_hash(resource::File)
@@ -73,8 +75,12 @@ function resource_hash(resource::File)
 end
 
 function configdir(u::Transaction)
+    configdir(u.name, u.id)
+end
+
+function configdir(name::String, id::String)
     root = get(ENV, "TRANSACTION_CONFIG_DIR", joinpath(homedir(), ".transaction"))
-    joinpath(root, string(u.name, "-", u.id))
+    joinpath(root, string(name, "-", id))
 end
 
 function resourcedir(u::Transaction)
@@ -205,6 +211,9 @@ function patch(callback::Function, u::Transaction, src::String, src_type::Val{TO
 end
 
 function patch(callback::Function, u::Transaction, src::String, src_type::Val{JSONFile})
+    if !isfile(src) && !isdir(src)
+        error("Resource $(src) not found")
+    end
     backup!(u, File(src))
     res = JSON.parsefile(src)
     new_res = callback(res)
@@ -214,5 +223,17 @@ function patch(callback::Function, u::Transaction, src::String, src_type::Val{JS
     mv(src*".tmp", src, force = true)
 end
 
+function patch(callback::Function, u::Transaction, src::String, src_type::Val{EnvFile})
+    if !isfile(src) && !isdir(src)
+        error("Resource $(src) not found")
+    end
+    backup!(u, File(src))
+    res = DotEnv.parse(src)
+    new_res = callback(res)
+    open(src*".tmp", "w") do f
+        DotEnv.print(f, new_res)
+    end
+    mv(src*".tmp", src, force = true)
+end
 
 end # module

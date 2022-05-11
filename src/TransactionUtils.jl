@@ -96,7 +96,7 @@ function add!(u::Transaction, key::String, hashconfig::Dict)
     @debug "Persisting backup structure for rollback $(key)" hashconfig
     upgrade_file = joinpath(configdir(u), "transaction.json")
     open(upgrade_file*".tmp", "w") do f
-        JSON.print(f, u.config)
+        JSON.print(f, u.config, 4)
     end
     mv(upgrade_file*".tmp", upgrade_file, force = true)
 end
@@ -105,7 +105,7 @@ function remove!(u::Transaction, key::String)
     delete!(u.config["backups"], key)
     upgrade_file = joinpath(configdir(u), "transaction.json")
     open(upgrade_file*".tmp", "w") do f
-        JSON.print(f, u.config)
+        JSON.print(f, u.config, 4)
     end
     mv(upgrade_file*".tmp", upgrade_file, force = true)
 end
@@ -192,7 +192,7 @@ function convert(u::Transaction,  dest::String, src_type::Val{TOMLFile}, dest_ty
     backup!(u, File(dest))
     res = TOML.parsefile(dest)
     open(dest*".tmp", "w") do f
-        JSON.print(f, res)
+        JSON.print(f, res, 4)
     end
     mv(dest*".tmp", dest, force = true)
 end

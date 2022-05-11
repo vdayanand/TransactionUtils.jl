@@ -49,9 +49,7 @@ function Transaction(name::String, id::String)
 end
 
 function Transaction(proc::Function, name::String; auto_rollback = true, verbose = false)
-    if !isnothing(match(r"\s", name))
-        error("Transaction name should not contain space characters")
-    end
+    name = replace(name, r"\s"=>s"-")
     u = Transaction(name, randstring(6), proc, Dict("backups"=>Dict{String, Any}()))
     dir = configdir(u)
     if !isdir(dir)
